@@ -23,16 +23,16 @@ The Password Strength Checker is a vital tool designed to evaluate and bolster t
 ## Getting Started
 1. **Clone the Repository:**
     ```bash
-    git clone https://github.com/yourusername/your-repo.git
-    cd your-repo
+    git clone https://github.com/Praveenm1910/passwordstrengthchecker.git
+    cd passwordstrengthchecker
     ```
 2. **Compile the Code:**
     ```bash
-    gcc -o password_checker password_checker.c
+    gcc -o passwordchecker passwordchecker.c
     ```
 3. **Run the Program:**
     ```bash
-    ./password_checker
+    ./passwordchecker
     ```
 
 ## Contributing
