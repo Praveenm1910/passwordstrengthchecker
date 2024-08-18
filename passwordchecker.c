@@ -3,40 +3,49 @@
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <regex.h>
 
-// Function prototypes
-int pass_score(char *password);
-int strength(char *password);
-int caps(char *password);
-int low(char *password);
-int symbol(char *password);
-int seq(char *password);
-int sanitize_input(char *password);
+// Function prototyping
+int pass_score(const char *password);
+int strength(const char *password);
+int caps(const char *password);
+int low(const char *password);
+int symbol(const char *password);
+int seq(const char *password);
+int match_regex(const char *pattern, const char *text);
 
 int main() {
-    // Use getpass to securely capture user input without echoing
-    
-    printf("______________________________________________________________________________________\n");
-    
-    printf("Welcome my password Strength Checker Tool\n");
-    printf("______________________________________________________________________________________\n");
- 
-    char *pass;
-    pass = getpass("Enter your password: ");
+    printf("--------------------------------------------------------------------------------------\n");
+    printf("Welcome to my Password Strength Checker Tool\n");
+    printf("This is a basic tool that helps you to know the strength of your passwords.\n");
+    printf("This tool will review and return your password strength in points ranging from 1 to 10.\n");
+    printf("This tool will analyze the strength of your password based on the following:\n");
+    printf("1. Your password length should be at least 8 characters long: 1 point.\n");
+    printf("2. Password must contain at least one uppercase letter: 1 point.\n");
+    printf("3. If the password has three or more lowercase letters: 4 points.\n");
+    printf("4. If the password contains at least one special symbol: 1 point.\n"); 
+    printf("5. If the password contains 3 or more digits that are not sequential: 3 points.\n");
+    printf("--------------------------------------------------------------------------------------\n");
+
+    // Get the input from the user securely 
+    char *pass = getpass("Enter your password: ");
+    if (pass == NULL) {
+        fprintf(stderr, "Error: Unable to read password input.\n");
+        exit(EXIT_FAILURE);
+    }
 
     // Calculate and display the password strength
     int score = pass_score(pass);
     printf("\nPassword strength score: %d out of 10\n", score);
+
+    // Clear the password from memory
+    memset(pass, 0, strlen(pass));
+
     return 0;
 }
 
-// Calculate total password score based on various checks
-int pass_score(char *password) {
-    if (!sanitize_input(password)) {
-        printf("\nWarning: Password contains invalid characters. Please use safe characters only.\n");
-        return 0;
-    }
-
+// Calculate overall password score based on various checks
+int pass_score(const char *password) {
     int score = 0;
     score += strength(password);
     score += caps(password);
@@ -46,24 +55,11 @@ int pass_score(char *password) {
     return score;
 }
 
-// Check if password contains only allowed characters
-int sanitize_input(char *password) {
-    // Allowed characters are alphanumeric and common special symbols
-    const char *allowed_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{};':\"\\|,.<>/?`~";
-
-    for (int i = 0; i < strlen(password); i++) {
-        if (!strchr(allowed_chars, password[i])) {
-            printf("Error: Password contains disallowed characters!\n");
-            return 0;
-        }
-    }
-    return 1; // Password is safe
-}
-
 // Check if password length is 8 or more
-int strength(char *password) {
-    printf("\nPassword length: %zu characters", strlen(password));
-    if (strlen(password) >= 8) {
+int strength(const char *password) {
+    size_t length = strlen(password);
+    printf("\nPassword length: %zu characters", length);
+    if (length >= 8) {
         printf(" - Sufficient length.");
         return 1;
     } else {
@@ -73,83 +69,96 @@ int strength(char *password) {
 }
 
 // Check if password contains at least one uppercase letter
-int caps(char *password) {
-    for (int i = 0; i < strlen(password); i++) {
-        if (isupper(password[i])) {
-            printf("\nPassword includes an uppercase letter.");
-            return 1;
-        }
+int caps(const char *password) {
+    if (match_regex("[A-Z]", password)) {
+        printf("\nPassword includes an uppercase letter.");
+        return 1;
     }
     printf("\nPassword lacks uppercase letters.");
     return 0;
 }
 
 // Check if password contains at least three lowercase letters
-int low(char *password) {
-    int count = 0;
-    for (int i = 0; i < strlen(password); i++) {
-        if (islower(password[i])) {
-            count++;
-        }
-        if (count >= 3) {
-            printf("\nPassword has three or more lowercase letters.");
-            return 4;
-        }
+int low(const char *password) {
+    if (match_regex("([a-z].*){3,}", password)) {
+        printf("\nPassword has three or more lowercase letters.");
+        return 4;
     }
     printf("\nPassword needs more lowercase letters.");
     return 0;
 }
 
 // Check if password contains at least one special symbol
-int symbol(char *password) {
-    for (int i = 0; i < strlen(password); i++) {
-        if (ispunct(password[i])) {
-            printf("\nPassword includes a special symbol.");
-            return 1;
-        }
+int symbol(const char *password) {
+    if (match_regex("[!@#$%^&*(),.?\":{}|<>]", password)) {
+        printf("\nPassword includes a special symbol.");
+        return 1;
     }
     printf("\nPassword lacks special symbols.");
     return 0;
 }
 
-// Check if password has sequential digits and penalize for them
-int seq(char *password) {
-    int count = 0;
-    for (int i = 0; i < strlen(password); i++) {
+// Check if password has sequential digits 
+int seq(const char *password) {
+    int digit_count = 0;
+
+    // Count the number of digits in the password
+    for (size_t i = 0; i < strlen(password); i++) {
         if (isdigit(password[i])) {
-            count++;
+            digit_count++;
         }
     }
 
-    if (count >= 3) {
-        for (int i = 0; i < strlen(password) - 2; i++) {
-            if (isdigit(password[i]) && isdigit(password[i + 1]) && isdigit(password[i + 2])) {
-                int d1 = password[i];
-                int d2 = password[i + 1];
-                int d3 = password[i + 2];
-                if ((abs(d2 - d1) == 1 || abs(d2 - d1) == 0) && (abs(d3 - d2) == 1 || abs(d3 - d2) == 0)) {
-                    printf("\nPassword contains a sequence of 3 consecutive numbers.");
-                    return 0;
-                }
-            }
+    // If there are 3 or more digits
+    if (digit_count >= 3) {
+        // Check for 3 consecutive or identical digits
+        if (match_regex("(\\d)\\1{2}|(\\d)(\\d)\\2", password)) {
+            printf("\nPassword contains a sequence of 3 consecutive or identical numbers.");
+            return 0;
         }
-        printf("\nPassword includes 3 non-consecutive numbers.");
+        printf("\nPassword includes 3 or more non-consecutive numbers.");
         return 3;
-    } else if (count == 2) {
-        for (int i = 0; i < strlen(password) - 1; i++) {
-            if (isdigit(password[i]) && isdigit(password[i + 1])) {
-                int d1 = password[i];
-                int d2 = password[i + 1];
-                if (abs(d2 - d1) == 1 || abs(d2 - d1) == 0) {
-                    printf("\nPassword has a sequence of 2 consecutive numbers.");
-                    return 0;
-                }
-            }
+    } 
+    // If there are 2 digits
+    else if (digit_count == 2) {
+        // Check for 2 consecutive or identical digits
+        if (match_regex("(\\d)\\1", password)) {
+            printf("\nPassword has a sequence of 2 consecutive or identical numbers.");
+            return 0;
         }
         printf("\nPassword has 2 non-consecutive numbers.");
         return 2;
-    } else {
-        printf("\nPassword has fewer than 2 digits.");
+    } 
+    // If there is 1 digit
+    else if (digit_count == 1) {
+        printf("\nPassword has only 1 digit.");
         return 0;
     }
+    // If there are no digits
+    else {
+        printf("\nPassword has no digits.");
+        return 0;
+    }
+}
+
+// Function to compile and execute a regex pattern
+int match_regex(const char *pattern, const char *text) {
+    regex_t regex;
+    int result;
+
+    // Compile the regex pattern
+    result = regcomp(&regex, pattern, REG_EXTENDED);
+    if (result) {
+        char error_message[100];
+        regerror(result, &regex, error_message, sizeof(error_message));
+        fprintf(stderr, "Regex compilation failed: %s\n", error_message);
+        return 0;
+    }
+
+    // Execute the regex
+    result = regexec(&regex, text, 0, NULL, 0);
+    regfree(&regex);
+    
+    // Return whether the pattern matched
+    return !result;
 }
